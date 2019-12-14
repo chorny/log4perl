@@ -10,9 +10,36 @@ BEGIN {
 use strict;
 use warnings;
 use Test::More;
-use Log::Log4perl::Config::Watch;
+use Config;
 
-plan tests => 4;
+our $SIGNALS_AVAILABLE = 0;
+
+BEGIN {
+    no warnings;
+    # Check if this platform supports signals
+    if (length $Config{sig_name} and length $Config{sig_num}) {
+        eval {
+            $SIG{USR1} = sub { $SIGNALS_AVAILABLE = 1 };
+            # From the Config.pm manpage
+            my(%sig_num);
+            my @names = split ' ', $Config{sig_name};
+            @sig_num{@names} = split ' ', $Config{sig_num};
+
+            kill $sig_num{USR1}, $$;
+        };
+        if($@) {
+            $SIGNALS_AVAILABLE = 0;
+        }
+    }
+        
+    if ($SIGNALS_AVAILABLE) {
+        plan tests => 4;
+    }else{
+        plan skip_all => "only on platforms supporting signals";
+    }
+}
+
+use Log::Log4perl::Config::Watch;
 
 my $EG_DIR = "eg";
 $EG_DIR = "../eg" unless -d $EG_DIR;
